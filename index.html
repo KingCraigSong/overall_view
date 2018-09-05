@@ -1,0 +1,191 @@
+<html lang="en">
+
+	<head>
+		<title>全景测试</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<style>
+			*{padding:0;margin:0;list-style:none;border:none;}
+		</style>
+	</head>
+
+	<body>
+
+		<div id="container"></div>
+		<script src="js/hammer.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/three.js"></script>
+
+		<script>
+			var camera, scene, renderer;
+			var isUserInteracting = false,
+				onMouseDownMouseX = 0,
+				onMouseDownMouseY = 0,
+				lon = 0,
+				onMouseDownLon = 0,
+				lat = 0,
+				onMouseDownLat = 0,
+				phi = 0,
+				theta = 0;
+			init();
+			animate();
+
+			function init() {
+				var container, mesh;
+				container = document.getElementById('container');
+				camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+				camera.target = new THREE.Vector3(0, 0, 0);
+				scene = new THREE.Scene();
+				var geometry = new THREE.SphereGeometry(500, 60, 40);
+				geometry.scale(-1, 1, 1);
+				var material = new THREE.MeshBasicMaterial({
+					map: new THREE.TextureLoader().load('img/ipluslab_tyutxiaocui.jpg')
+				});
+				mesh = new THREE.Mesh(geometry, material);
+				scene.add(mesh);
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio(window.devicePixelRatio);
+				renderer.setSize(window.innerWidth, window.innerHeight);
+				container.appendChild(renderer.domElement);
+				document.addEventListener('mousedown', onDocumentMouseDown, false);
+				document.addEventListener('mousemove', onDocumentMouseMove, false);
+				document.addEventListener('mouseup', onDocumentMouseUp, false);
+				document.addEventListener('mousewheel', onDocumentMouseWheel, false);
+				document.addEventListener('MozMousePixelScroll', onDocumentMouseWheel, false);
+				//
+				document.addEventListener('dragover', function(event) {
+					event.preventDefault();
+					event.dataTransfer.dropEffect = 'copy';
+				}, false);
+				document.addEventListener('dragenter', function(event) {
+					document.body.style.opacity = 0.5;
+				}, false);
+				document.addEventListener('dragleave', function(event) {
+					document.body.style.opacity = 1;
+				}, false);
+				document.addEventListener('drop', function(event) {
+					event.preventDefault();
+					var reader = new FileReader();
+					reader.addEventListener('load', function(event) {
+						material.map.image.src = event.target.result;
+						material.map.needsUpdate = true;
+					}, false);
+					reader.readAsDataURL(event.dataTransfer.files[0]);
+					document.body.style.opacity = 1;
+				}, false);
+				//
+				window.addEventListener('resize', onWindowResize, false);
+				/*
+				 *手机事件
+				 */
+				var hammertime = new Hammer(document.getElementById("container"));
+				//添加事件
+				hammertime.on("panstart", function(event) {
+					isUserInteracting = true;
+					onPointerDownPointerX = event.deltaX;
+					onPointerDownPointerY = event.deltaY;
+					onPointerDownLon = lon;
+					onPointerDownLat = lat;
+				});
+				hammertime.on("panmove", function(event) {
+					console.log(event.deltaX);
+					if (isUserInteracting === true) {
+						lon = (onPointerDownPointerX - event.deltaX) * 0.1 + onPointerDownLon;
+						lat = (event.deltaY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+					}
+				});
+				hammertime.on("panend", function(event) {
+					isUserInteracting = false;
+				});
+			}
+			/*
+			 * 函数集合
+			 */
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize(window.innerWidth, window.innerHeight);
+			}
+
+			function onDocumentMouseDown(event) {
+				event.preventDefault();
+				isUserInteracting = true;
+				onPointerDownPointerX = event.clientX;
+				onPointerDownPointerY = event.clientY;
+				onPointerDownLon = lon;
+				onPointerDownLat = lat;
+			}
+
+			function onDocumentMouseMove(event) {
+				if (isUserInteracting === true) {
+					lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
+					lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+				}
+			}
+
+			function onDocumentMouseUp(event) {
+				isUserInteracting = false;
+			}
+
+			function onDocumentMouseWheel(event) {
+				// WebKit
+				if (event.wheelDeltaY) {
+					if (camera.fov < 120 && camera.fov > 50) {
+						camera.fov -= event.wheelDeltaY * 0.05;
+					}
+					if (camera.fov >= 120 && event.wheelDeltaY > 0) {
+						camera.fov -= event.wheelDeltaY * 0.05;
+					}
+					if (camera.fov <= 50 && event.wheelDeltaY < 0) {
+						camera.fov -= event.wheelDeltaY * 0.05;
+					}
+					// Opera / Explorer 9
+				} else if (event.wheelDelta) {
+					if (camera.fov < 120 && camera.fov > 50) {
+						camera.fov -= event.wheelDelta * 0.05;
+					}
+					if (camera.fov >= 120 && event.wheelDeltaY > 0) {
+						camera.fov -= event.wheelDelta * 0.05;
+					}
+					if (camera.fov <= 50 && event.wheelDeltaY < 0) {
+						camera.fov -= event.wheelDelta * 0.05;
+					}
+					// Firefox
+				} else if (event.detail) {
+					if (camera.fov < 120 && camera.fov > 50) {
+						camera.fov += event.detail * 1.0;
+					}
+					if (camera.fov >= 120 && event.wheelDeltaY > 0) {
+						camera.fov += event.detail * 1.0;
+					}
+					if (camera.fov <= 50 && event.wheelDeltaY < 0) {
+						camera.fov += event.detail * 1.0;
+					}
+				}
+				camera.updateProjectionMatrix();
+			}
+
+			function animate() {
+				requestAnimationFrame(animate);
+				update();
+			}
+
+			function update() {
+				if (isUserInteracting === false) {
+					lon += 0.1; //自动旋转
+				}
+				lat = Math.max(-85, Math.min(85, lat));
+				phi = THREE.Math.degToRad(90 - lat);
+				theta = THREE.Math.degToRad(lon);
+				camera.target.x = 500 * Math.sin(phi) * Math.cos(theta);
+				camera.target.y = 500 * Math.cos(phi);
+				camera.target.z = 500 * Math.sin(phi) * Math.sin(theta);
+				camera.lookAt(camera.target);
+				// distortion  鱼眼
+				// camera.position.copy( camera.target ).negate();
+				renderer.render(scene, camera);
+			}
+		</script>
+
+	</body>
+
+</html>
